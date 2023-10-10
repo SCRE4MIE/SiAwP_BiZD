@@ -1,0 +1,84 @@
+CREATE TABLE regions(
+    region_id INT PRIMARY KEY,
+    region_name VARCHAR2(60)
+);
+
+CREATE TABLE countries(
+    country_id INT PRIMARY KEY,
+    country_name VARCHAR(60),
+    region_id INT,
+    FOREIGN KEY (region_id) REFERENCES regions(region_id)
+);
+
+CREATE TABLE locations(
+    location_id INT PRIMARY KEY,
+    street_address VARCHAR(255),
+    postal_code VARCHAR(6),
+    city VARCHAR(99),
+    state_province VARCHAR(99),
+    country_id INT,
+    FOREIGN KEY (country_id) REFERENCES countries(country_id)
+);
+
+CREATE TABLE departments(
+    department_id INT,
+    department_name VARCHAR(99),
+    manager_id INT,
+    location_id INT,
+    FOREIGN KEY (location_id) REFERENCES locations(location_id)
+);
+
+
+ALTER TABLE departments ADD PRIMARY KEY (department_id);
+
+CREATE TABLE employees(
+    employee_id INT PRIMARY KEY,
+    first_name VARCHAR(99),
+    last_name VARCHAR(99),
+    email VARCHAR(255),
+    phone_number VARCHAR(20),
+    hire_date DATE,
+    job_id INT,
+    salary DECIMAL,
+    commission_pct DECIMAL,
+    manager_id INT,
+    department_id INT,
+    FOREIGN KEY (department_id) REFERENCES departments(department_id),
+    FOREIGN KEY (manager_id) REFERENCES employees(employee_id)
+);
+
+CREATE TABLE JOBS(
+    job_id INT PRIMARY KEY,
+    job_title VARCHAR(255),
+    min_salary DECIMAL,
+    max_salary DECIMAL,
+    CONSTRAINT chk_salary CHECK ( min_salary < max_salary AND max_salary - min_salary > 2000 )
+);
+
+ALTER TABLE employees ADD FOREIGN KEY (job_id) REFERENCES JOBS(job_id);
+
+CREATE TABLE job_history(
+    job_history_id INT PRIMARY KEY,
+    employee_id INT,
+    start_date DATE,
+    end_date DATE,
+    job_id INT,
+    department_id INT,
+    FOREIGN KEY (department_id) REFERENCES departments(department_id),
+    FOREIGN KEY (job_id) REFERENCES JOBS(job_id),
+    FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
+);
+
+DROP TABLE job_history;
+
+CREATE TABLE job_history(
+    job_history_id INT PRIMARY KEY,
+    employee_id INT,
+    start_date DATE,
+    end_date DATE,
+    job_id INT,
+    department_id INT,
+    FOREIGN KEY (department_id) REFERENCES departments(department_id),
+    FOREIGN KEY (job_id) REFERENCES JOBS(job_id),
+    FOREIGN KEY (employee_id) REFERENCES employees(employee_id)
+);
