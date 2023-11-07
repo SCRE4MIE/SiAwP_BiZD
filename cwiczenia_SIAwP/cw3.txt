@@ -31,3 +31,77 @@ BEGIN
     DBMS_OUTPUT.PUT_LINE(country.COUNTRY_NAME);
     DBMS_OUTPUT.PUT_LINE(country.REGION_ID);
 END;
+
+-- cw 5
+DECLARE
+    TYPE DEPARTMENT_INDEX IS TABLE OF DEPARTMENTS.DEPARTMENT_NAME%TYPE INDEX BY BINARY_INTEGER;
+    departments_variable DEPARTMENT_INDEX;
+BEGIN
+    FOR i in 1..10 LOOP
+        SELECT DEPARTMENT_NAME INTO departments_variable(i*10) FROM DEPARTMENTS WHERE DEPARTMENT_ID = i*10;
+        DBMS_OUTPUT.PUT_LINE('Numer: ' || i * 10 || ', Nazwa: ' || departments_variable(i * 10));
+    END LOOP;
+END;
+
+-- cw 6
+DECLARE
+  DEPARTMENT DEPARTMENTS%rowtype;
+BEGIN
+  FOR i IN 1..10 LOOP
+    SELECT * INTO DEPARTMENT
+    FROM DEPARTMENTS
+    WHERE DEPARTMENT_ID = i * 10;
+    DBMS_OUTPUT.PUT_LINE('ID: ' || DEPARTMENT.DEPARTMENT_ID);
+    DBMS_OUTPUT.PUT_LINE('Nazwa: ' || DEPARTMENT.DEPARTMENT_NAME);
+    DBMS_OUTPUT.PUT_LINE('ID menedzera: ' || DEPARTMENT.MANAGER_ID);
+    DBMS_OUTPUT.PUT_LINE('ID lokalizacji: ' || DEPARTMENT.LOCATION_ID);
+    DBMS_OUTPUT.PUT_LINE('--------------------------');
+  END LOOP;
+END;
+
+-- cw 7
+DECLARE
+    CURSOR employees_cursor IS
+        SELECT SALARY, LAST_NAME FROM EMPLOYEES WHERE EMPLOYEES.DEPARTMENT_ID = 50;
+    salary_variable EMPLOYEES.SALARY%type;
+    last_name_variable EMPLOYEES.LAST_NAME%type;
+BEGIN
+    OPEN employees_cursor;
+    LOOP
+        FETCH employees_cursor INTO salary_variable, last_name_variable;
+        EXIT WHEN employees_cursor%notfound;
+        IF salary_variable > 3100 THEN
+            DBMS_OUTPUT.PUT_LINE(last_name_variable || ' nie dawac podwyzki');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE(last_name_variable || ' dac podwyzke');
+        END IF;
+    END LOOP;
+    CLOSE employees_cursor;
+END;
+
+-- cw 8
+DECLARE
+    CURSOR employees_cursor(min_salary NUMBER, max_salary NUMBER, name_part VARCHAR2) IS
+        SELECT SALARY, FIRST_NAME, LAST_NAME FROM EMPLOYEES
+        WHERE SALARY BETWEEN min_salary AND max_salary AND LOWER(FIRST_NAME) LIKE '%' || LOWER(name_part) || '%';
+    salary_variable EMPLOYEES.SALARY%type;
+    first_name_variable EMPLOYEES.FIRST_NAME%type;
+    last_name_variable EMPLOYEES.LAST_NAME%type;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('Pracownicy z zarobkami miedzy 1000 a 5000 i imieniem zawierajacym a/A:');
+    OPEN employees_cursor(1000, 5000, 'a');
+    LOOP
+        FETCH employees_cursor INTO salary_variable, first_name_variable, last_name_variable;
+        EXIT WHEN employees_cursor%notfound;
+        DBMS_OUTPUT.PUT_LINE(first_name_variable || ' ' || last_name_variable || ', Zarobki: ' || salary_variable);
+    END LOOP;
+    CLOSE employees_cursor;
+    DBMS_OUTPUT.PUT_LINE('Pracownicy z zarobkami miedzy 5000 a 20000 i imieniem zawierajacym u/U:');
+    OPEN employees_cursor(5000, 20000, 'u');
+    LOOP
+        FETCH employees_cursor INTO salary_variable, first_name_variable, last_name_variable;
+        EXIT WHEN employees_cursor%notfound;
+        DBMS_OUTPUT.PUT_LINE(first_name_variable || ' ' || last_name_variable || ', Zarobki: ' || salary_variable);
+    END LOOP;
+    CLOSE employees_cursor;
+END;
