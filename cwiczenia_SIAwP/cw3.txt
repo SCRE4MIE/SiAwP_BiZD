@@ -105,3 +105,115 @@ BEGIN
     END LOOP;
     CLOSE employees_cursor;
 END;
+
+-- cw 9 a)
+CREATE OR REPLACE PROCEDURE AddJob(
+    job_id_variable Jobs.Job_id%TYPE,
+    job_title_variable Jobs.Job_title%TYPE
+) IS
+BEGIN
+    INSERT INTO JOBS(JOB_ID, JOB_TITLE) VALUES(job_id_variable, job_title_variable);
+EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('Blad podczas dodawania wiersza do Jobs: ' || SQLERRM);
+END;
+
+CALL AddJob(100,'Test');
+
+-- cw 9 b)
+CREATE OR REPLACE PROCEDURE ChangeJobTittle(
+    job_id_variable Jobs.Job_id%TYPE,
+    job_new_tittle Jobs.Job_title%type
+)IS
+    no_jobs_updated EXCEPTION;
+    PRAGMA EXCEPTION_INIT(no_jobs_updated, -1722);
+BEGIN
+    UPDATE JOBS SET JOB_TITLE = job_new_tittle WHERE JOB_ID = job_id_variable;
+
+EXCEPTION
+    WHEN no_jobs_updated THEN
+        DBMS_OUTPUT.PUT_LINE('Aktualizacja wiersza tabeli Jobs nie powiodła się.');
+
+END;
+
+CALL ChangeJobTittle(1000, 'Test2');
+
+-- cw 9 c)
+CREATE OR REPLACE PROCEDURE DeleteJob(
+    job_id_variable Jobs.Job_id%TYPE
+)IS
+    no_jobs_deleted EXCEPTION;
+    PRAGMA EXCEPTION_INIT(no_jobs_deleted, -20001);
+BEGIN
+    DELETE JOBS WHERE JOB_ID=job_id_variable;
+EXCEPTION
+    WHEN no_jobs_deleted THEN
+        DBMS_OUTPUT.PUT_LINE('Usunięcie wiersza tabeli Jobs nie powiodła się.');
+END;
+
+CALL DeleteJob(100);
+
+-- cw 9 d)
+CREATE OR REPLACE PROCEDURE GetEmployeesSalary(
+    employee_id_variable Employees.employee_id%TYPE,
+    salary_out OUT employees.salary%TYPE,
+    last_name_out OUT employees.last_name%TYPE
+)
+AS
+BEGIN
+    SELECT salary, last_name INTO salary_out, last_name_out FROM employees
+    WHERE employees.employee_id = employee_id_variable;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Brak pracownika o podanym ID.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Blad podczas pobierania danych' || SQLERRM);
+END;
+
+DECLARE
+  salary_variable NUMBER;
+  last_name_variable VARCHAR2(50);
+BEGIN
+    GetEmployeesSalary(100, salary_variable, last_name_variable);
+    IF salary_variable IS NOT NULL THEN
+        DBMS_OUTPUT.PUT_LINE('Zarobki: ' || salary_variable);
+        DBMS_OUTPUT.PUT_LINE('Nazwisko pracownika: ' || last_name_variable);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Wystapil blad lub nie ma pracownika o takim ID!');
+    END IF;
+END;
+
+-- cw 9 e)
+CREATE OR REPLACE PROCEDURE AddEmployee(
+    first_name_var employees.first_name%TYPE,
+    last_name_var employees.last_name%TYPE,
+    salary_var employees.salary%TYPE DEFAULT 2784,
+    email_var employees.email%TYPE DEFAULT 'example@example.com',
+    phone_number_var employees.phone_number%TYPE DEFAULT NULL,
+    hire_date_var employees.hire_date%TYPE DEFAULT SYSDATE,
+    job_id_var employees.job_id%TYPE DEFAULT 'IT_PROG',
+    commission_pct_var employees.commission_pct%TYPE DEFAULT NULL,
+    manager_id_var employees.manager_id%TYPE DEFAULT NULL,
+    department_id_var employees.department_id%TYPE DEFAULT 60
+) AS
+    salaryError EXCEPTION;
+    PRAGMA EXCEPTION_INIT (salaryError, -20002);
+    employee_id_var NUMBER;
+BEGIN
+    SELECT (MAX(employee_id) + 1) INTO employee_id_var FROM employees;
+    IF salary_var > 20000 THEN
+        RAISE salaryError;
+    ELSE
+        INSERT INTO employees
+        VALUES (employee_id_var, first_name_var, last_name_var,email_var, phone_number_var,
+                hire_date_var, job_id_var, salary_var, commission_pct_var, manager_id_var, department_id_var);
+        COMMIT;
+    END IF;
+EXCEPTION
+    WHEN salaryError THEN
+        DBMS_OUTPUT.PUT_LINE('Wynagrodzenie przekracza 20000 PLN! Brak mozliwosci dodania pracownika');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Blad podczasz dodawania pracownika do tabeli.');
+END;
+
+CALL AddEmployee('Tom', 'Jerry');
