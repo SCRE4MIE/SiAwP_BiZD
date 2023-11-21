@@ -1,0 +1,94 @@
+-- Funkcje:
+-- cw 1)
+CREATE OR REPLACE FUNCTION FindJob(
+    id_job_var VARCHAR2
+) RETURN VARCHAR2
+IS
+    job_name_var VARCHAR(255);
+BEGIN
+    SELECT JOB_TITLE INTO job_name_var FROM JOBS WHERE JOBS.JOB_ID=id_job_var;
+    RETURN job_name_var;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Podana praca o tym ID nie istnieje!');
+        RETURN NULL;
+END;
+
+SELECT FindJob('SA_REP') AS job_name FROM DUAL;
+SELECT FindJob('cdmcdkc') AS job_name FROM DUAL;
+
+-- cw 2)
+CREATE OR REPLACE FUNCTION GetYearSalary(
+    id_employees_var INT
+) RETURN DECIMAL
+IS
+    salary_var DECIMAL;
+    commission_pct_var DECIMAL;
+BEGIN
+    SELECT SALARY, COMMISSION_PCT INTO salary_var, commission_pct_var FROM EMPLOYEES WHERE EMPLOYEE_ID=id_employees_var;
+    IF commission_pct_var IS NOT NULL THEN
+        RETURN (salary_var * 12 + (salary_var * commission_pct_var));
+    END IF;
+    RETURN (salary_var * 12);
+    EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Podany pracownik o tym ID nie istnieje!');
+        RETURN NULL;
+END;
+
+SELECT GetYearSalary(164) AS year_salary FROM DUAL;
+
+-- cw 3)
+CREATE OR REPLACE FUNCTION GetPhoneNumber(
+    phone_number VARCHAR2
+) RETURN VARCHAR2
+IS
+
+BEGIN
+    IF phone_number IS NULL THEN
+        RETURN NULL;
+    END IF;
+    RETURN '(' || SUBSTR(phone_number, 0, 3) || ')' || SUBSTR(phone_number, 4, LENGTH(phone_number));
+END;
+
+SELECT GetPhoneNumber('+48111222333') AS phone_number FROM DUAL;
+
+-- cw 4)
+CREATE Or REPLACE FUNCTION Foo(
+    string_var VARCHAR2
+) RETURN VARCHAR2 IS
+BEGIN
+    IF string_var IS NULL THEN
+        RETURN NULL;
+    END IF;
+    IF LENGTH(string_var) > 1 THEN
+        RETURN UPPER(SUBSTR(string_var, 0, 1)) ||
+                         LOWER(SUBSTR(string_var, 2, LENGTH(string_var) - 1)) ||
+                         UPPER(SUBSTR(string_var, LENGTH(string_var), 1));
+    END IF;
+    RETURN UPPER(string_var);
+END;
+
+SELECT Foo('cdkdecDDdkc') AS string FROM DUAL;
+
+-- cw 5)
+CREATE Or REPLACE FUNCTION PeselToDate(
+    pesel VARCHAR2
+) RETURN DATE
+IS
+    year_var VARCHAR2(2);
+    month_var VARCHAR2(2);
+    day_var VARCHAR2(2);
+    str_date VARCHAR2(10);
+BEGIN
+    IF pesel IS NULL THEN
+        RETURN NULL;
+    END IF;
+    year_var := SUBSTR(pesel, 0, 2);
+    month_var := SUBSTR(pesel, 3, 2);
+    day_var := SUBSTR(pesel, 5, 2);
+    str_date := year_var || '-' || month_var ||'-'|| day_var;
+    RETURN TO_DATE(str_date, 'RR-MM-DD');
+END;
+
+SELECT PeselToDate('99051900000') AS pesel FROM DUAL;
