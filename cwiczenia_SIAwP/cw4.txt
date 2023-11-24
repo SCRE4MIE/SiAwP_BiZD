@@ -92,3 +92,34 @@ BEGIN
 END;
 
 SELECT PeselToDate('99051900000') AS pesel FROM DUAL;
+
+-- cw 6)
+CREATE OR REPLACE FUNCTION GetEmployeesAndDepNum(
+    country_name_var VARCHAR2
+) RETURN VARCHAR2
+IS
+    returned_str VARCHAR2(255);
+    departments_count DECIMAL;
+    employees_count DECIMAL;
+
+    country_ID VARCHAR2(3);
+    department_var DEPARTMENTS%rowtype;
+
+BEGIN
+    SELECT COUNTRY_ID INTO country_ID FROM COUNTRIES WHERE COUNTRY_NAME=country_name_var;
+
+    SELECT COUNT(DEPARTMENT_ID) INTO departments_count FROM DEPARTMENTS JOIN LOCATIONS ON DEPARTMENTS.LOCATION_ID = LOCATIONS.LOCATION_ID
+    WHERE LOCATIONS.COUNTRY_ID = country_ID;
+
+    SELECT COUNT(EMPLOYEES.EMPLOYEE_ID) INTO employees_count
+    FROM EMPLOYEES
+    JOIN DEPARTMENTS ON EMPLOYEES.DEPARTMENT_ID = DEPARTMENTS.DEPARTMENT_ID
+    WHERE DEPARTMENTS.LOCATION_ID IN (SELECT LOCATION_ID FROM LOCATIONS JOIN COUNTRIES  ON LOCATIONS.COUNTRY_ID = COUNTRIES.COUNTRY_ID
+    WHERE COUNTRIES.COUNTRY_NAME = country_name_var);
+
+
+    returned_str := 'Liczba departamentow: ' || TO_CHAR(departments_count) || 'Liczba pracownikow:' || TO_CHAR(employees_count);
+    return returned_str;
+END;
+
+SELECT GetEmployeesAndDepNum('United States of America') AS a FROM DUAL;
