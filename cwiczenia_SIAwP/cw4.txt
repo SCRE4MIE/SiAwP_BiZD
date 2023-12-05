@@ -123,3 +123,221 @@ BEGIN
 END;
 
 SELECT GetEmployeesAndDepNum('United States of America') AS a FROM DUAL;
+
+-- Wyzwalacze:
+-- cw 1)
+CREATE TABLE DEPARTMENTS_ARCHIVE (
+    department_id NUMBER,
+    department_name VARCHAR(255),
+    close_date DATE,
+    manager_id NUMBER,
+    location_id NUMBER
+);
+
+CREATE OR REPLACE TRIGGER TriggerAfterDeleteDepartments
+AFTER DELETE ON DEPARTMENTS
+FOR EACH ROW
+BEGIN
+    INSERT INTO DEPARTMENTS_ARCHIVE
+    VALUES (:OLD.department_id, :OLD.department_name, SYSTIMESTAMP, :OLD.manager_id, :OLD.location_id);
+END;
+
+INSERT INTO DEPARTMENTS VALUES (2023, 'TEST', 100, 1500);
+DELETE FROM DEPARTMENTS WHERE department_id = 2023;
+SELECT * FROM DEPARTMENTS_ARCHIVE;
+
+-- cw 2)
+CREATE TABLE THIEF(
+    id  RAW(16) DEFAULT sys_guid() PRIMARY KEY,
+    username VARCHAR2(255),
+    change_time TIMESTAMP
+);
+
+CREATE OR REPLACE TRIGGER PreventSalaryUpdate
+BEFORE INSERT OR UPDATE ON EMPLOYEES
+FOR EACH ROW
+DECLARE
+    min_salary NUMBER := 2000;
+    max_salary NUMBER := 26000;
+    salary_not_correct EXCEPTION;
+    PRAGMA EXCEPTION_INIT( salary_not_correct, -20001 );
+BEGIN
+    IF :NEW.salary > max_salary OR :NEW.salary < min_salary THEN
+        INSERT INTO THIEF(username, change_time) VALUES (SYS_CONTEXT('USERENV', 'SESSION_USER'), SYSTIMESTAMP);
+        RAISE salary_not_correct;
+    END IF;
+END;
+
+SELECT * FROM THIEF;
+
+INSERT INTO EMPLOYEES (EMPLOYEE_ID, FIRST_NAME, LAST_NAME, EMAIL, PHONE_NUMBER, HIRE_DATE, JOB_ID, SALARY, COMMISSION_PCT, MANAGER_ID, DEPARTMENT_ID)
+VALUES (211, 'Jack', 'Sparrow', 'captain@pirates.net', '123123123', '2023-11-28', 'IT_PROG', 27000, 0.50, 205, 60);
+
+SELECT * FROM THIEF;
+
+-- cw 3)
+CREATE SEQUENCE EmployeesSequenceAutoIncrement
+    START WITH 1
+    INCREMENT BY 1
+    NOCACHE
+    NOCYCLE;
+
+CREATE OR REPLACE TRIGGER EmployeesAutoIncrement
+BEFORE INSERT ON EMPLOYEES
+FOR EACH ROW
+BEGIN
+    IF :NEW.employee_id IS NULL THEN
+        SELECT EmployeesSequenceAutoIncrement.NEXTVAL INTO :NEW.employee_id FROM dual;
+    END IF;
+END;
+
+INSERT INTO EMPLOYEES (FIRST_NAME, LAST_NAME, EMAIL, PHONE_NUMBER, HIRE_DATE, JOB_ID, SALARY, COMMISSION_PCT, MANAGER_ID, DEPARTMENT_ID)
+VALUES ('Jack', 'Sparrow', 'captain@pirates.net', '123123123', '2023-11-28', 'IT_PROG', 2700, 0.50, 205, 60);
+
+-- cw 4)
+CREATE OR REPLACE TRIGGER BlockJonGrades
+BEFORE INSERT OR UPDATE OR DELETE ON JOB_GRADES
+BEGIN
+  RAISE_APPLICATION_ERROR(-20024, 'Operację na JOB_GRADES sa zablokowane!');
+END;
+/
+DELETE FROM JOB_GRADES WHERE GRADE='A';
+
+-- cw 5)
+CREATE OR REPLACE TRIGGER BlockMaxMinSalaryJobs
+BEFORE UPDATE ON JOBS
+FOR EACH ROW
+BEGIN
+    :NEW.max_salary := :OLD.max_salary;
+    :NEW.min_salary := :OLD.min_salary;
+END;
+/
+SELECT * FROM JOBS WHERE job_id = 'SA_REP';
+Update JOBS SET min_salary=99, max_salary= 99 WHERE job_id = 'SA_REP';
+SELECT * FROM JOBS WHERE job_id = 'SA_REP';
+
+-- Paczki
+
+-- cw 1)
+CREATE OR REPLACE PACKAGE PKG_01 AS
+    FUNCTION FindJob(
+        id_job_var VARCHAR2
+    ) RETURN VARCHAR2;
+    FUNCTION GetYearSalary(
+        id_employees_var INT
+    ) RETURN DECIMAL;
+    FUNCTION GetPhoneNumber(
+        phone_number VARCHAR2
+    ) RETURN VARCHAR2;
+    FUNCTION Foo(
+        string_var VARCHAR2
+    ) RETURN VARCHAR2;
+    FUNCTION PeselToDate(
+        pesel VARCHAR2
+    ) RETURN DATE;
+    FUNCTION GetEmployeesAndDepNum(
+        country_name_var VARCHAR2
+    ) RETURN VARCHAR2;
+END PKG_01;
+CREATE OR REPLACE PACKAGE BODY PKG_01 AS
+    FUNCTION FindJob(
+        id_job_var VARCHAR2
+    ) RETURN VARCHAR2
+    IS
+        job_name_var VARCHAR(255);
+    BEGIN
+        SELECT JOB_TITLE INTO job_name_var FROM JOBS WHERE JOBS.JOB_ID=id_job_var;
+        RETURN job_name_var;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Podana praca o tym ID nie istnieje!');
+            RETURN NULL;
+    END;
+    FUNCTION GetYearSalary(
+        id_employees_var INT
+    ) RETURN DECIMAL
+    IS
+        salary_var DECIMAL;
+        commission_pct_var DECIMAL;
+    BEGIN
+        SELECT SALARY, COMMISSION_PCT INTO salary_var, commission_pct_var FROM EMPLOYEES WHERE EMPLOYEE_ID=id_employees_var;
+        IF commission_pct_var IS NOT NULL THEN
+            RETURN (salary_var * 12 + (salary_var * commission_pct_var));
+        END IF;
+        RETURN (salary_var * 12);
+        EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            DBMS_OUTPUT.PUT_LINE('Podany pracownik o tym ID nie istnieje!');
+            RETURN NULL;
+    END;
+    FUNCTION GetPhoneNumber(
+        phone_number VARCHAR2
+    ) RETURN VARCHAR2
+    IS
+
+    BEGIN
+        IF phone_number IS NULL THEN
+            RETURN NULL;
+        END IF;
+        RETURN '(' || SUBSTR(phone_number, 0, 3) || ')' || SUBSTR(phone_number, 4, LENGTH(phone_number));
+    END;
+    FUNCTION Foo(
+        string_var VARCHAR2
+    ) RETURN VARCHAR2 IS
+    BEGIN
+        IF string_var IS NULL THEN
+            RETURN NULL;
+        END IF;
+        IF LENGTH(string_var) > 1 THEN
+            RETURN UPPER(SUBSTR(string_var, 0, 1)) ||
+                             LOWER(SUBSTR(string_var, 2, LENGTH(string_var) - 1)) ||
+                             UPPER(SUBSTR(string_var, LENGTH(string_var), 1));
+        END IF;
+        RETURN UPPER(string_var);
+    END;
+    FUNCTION PeselToDate(
+        pesel VARCHAR2
+    ) RETURN DATE
+    IS
+        year_var VARCHAR2(2);
+        month_var VARCHAR2(2);
+        day_var VARCHAR2(2);
+        str_date VARCHAR2(10);
+    BEGIN
+        IF pesel IS NULL THEN
+            RETURN NULL;
+        END IF;
+        year_var := SUBSTR(pesel, 0, 2);
+        month_var := SUBSTR(pesel, 3, 2);
+        day_var := SUBSTR(pesel, 5, 2);
+        str_date := year_var || '-' || month_var ||'-'|| day_var;
+        RETURN TO_DATE(str_date, 'RR-MM-DD');
+    END;
+    FUNCTION GetEmployeesAndDepNum(
+        country_name_var VARCHAR2
+    ) RETURN VARCHAR2
+    IS
+        returned_str VARCHAR2(255);
+        departments_count DECIMAL;
+        employees_count DECIMAL;
+
+        country_ID VARCHAR2(3);
+        department_var DEPARTMENTS%rowtype;
+
+    BEGIN
+        SELECT COUNTRY_ID INTO country_ID FROM COUNTRIES WHERE COUNTRY_NAME=country_name_var;
+
+        SELECT COUNT(DEPARTMENT_ID) INTO departments_count FROM DEPARTMENTS JOIN LOCATIONS ON DEPARTMENTS.LOCATION_ID = LOCATIONS.LOCATION_ID
+        WHERE LOCATIONS.COUNTRY_ID = country_ID;
+
+        SELECT COUNT(EMPLOYEES.EMPLOYEE_ID) INTO employees_count
+        FROM EMPLOYEES
+        JOIN DEPARTMENTS ON EMPLOYEES.DEPARTMENT_ID = DEPARTMENTS.DEPARTMENT_ID
+        WHERE DEPARTMENTS.LOCATION_ID IN (SELECT LOCATION_ID FROM LOCATIONS JOIN COUNTRIES  ON LOCATIONS.COUNTRY_ID = COUNTRIES.COUNTRY_ID
+        WHERE COUNTRIES.COUNTRY_NAME = country_name_var);
+
+
+        returned_str := 'Liczba departamentow: ' || TO_CHAR(departments_count) || 'Liczba pracownikow:' || TO_CHAR(employees_count);
+        return returned_str;
+    END;
+END PKG_01;
