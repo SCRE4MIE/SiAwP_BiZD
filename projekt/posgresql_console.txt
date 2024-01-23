@@ -1,0 +1,42 @@
+ALTER TABLE weather_data
+    ADD COLUMN id SERIAL PRIMARY KEY;
+
+CREATE OR REPLACE FUNCTION check_the_correctness_of_the_data()
+RETURNS TRIGGER AS $$
+DECLARE
+  kolumna_name TEXT;
+  kolumna_value TEXT;
+BEGIN
+  FOR kolumna_name IN SELECT column_name FROM information_schema.columns WHERE table_name = TG_TABLE_NAME LOOP
+    EXECUTE format('SELECT $1.%I', kolumna_name) INTO kolumna_value USING NEW;
+
+    IF kolumna_name = 'date' THEN
+      -- Sprawdzenie czy kolumna datetime zawiera poprawny timestamp
+      IF kolumna_value IS NOT NULL AND NOT (kolumna_value::text ~ '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$') THEN
+        RAISE EXCEPTION 'Błąd: Kolumna "datetime" musi zawierać poprawny timestamp.';
+      END IF;
+    ELSE
+      -- Sprawdzenie czy pozostałe kolumny są typu float32
+      IF kolumna_value IS NOT NULL AND NOT (kolumna_value::text ~ '^[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?$') THEN
+        RAISE EXCEPTION 'Błąd: Kolumna "%s" musi zawierać poprawny float32.', kolumna_name;
+      END IF;
+    END IF;
+  END LOOP;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_check_the_correctness_of_the_data
+    BEFORE INSERT OR UPDATE
+    ON weather_data
+    FOR EACH ROW
+EXECUTE FUNCTION check_the_correctness_of_the_data();
+
+-- INSERT INTO weather_data VALUES (
+--  '2023-01-01 22:22:00'::timestamp, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+-- );
+--
+-- DELETE FROM weather_data
+-- WHERE id = 4;
+
