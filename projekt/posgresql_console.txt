@@ -1,6 +1,10 @@
 ALTER TABLE weather_data
     ADD COLUMN id SERIAL PRIMARY KEY;
 
+ALTER TABLE weather_data_archive
+    ADD COLUMN id SERIAL PRIMARY KEY;
+
+
 CREATE OR REPLACE FUNCTION check_the_correctness_of_the_data()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -33,10 +37,58 @@ CREATE TRIGGER trigger_check_the_correctness_of_the_data
     FOR EACH ROW
 EXECUTE FUNCTION check_the_correctness_of_the_data();
 
+-- Dodanie do archiwum usuniętego rekordu
+CREATE OR REPLACE FUNCTION add_to_archive()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO weather_data_archive VALUES (OLD.*);
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER add_to_archive_trigger
+BEFORE DELETE ON weather_data
+FOR EACH ROW
+EXECUTE FUNCTION add_to_archive();
+
+
 -- INSERT INTO weather_data VALUES (
---  '2023-01-01 22:22:00'::timestamp, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2
+--  '2023-01-01 22:22:00'::timestamp, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 999999999
 -- );
 --
 -- DELETE FROM weather_data
--- WHERE id = 4;
+-- WHERE id = 999999999;
+--
+-- SELECT * FROM weather_data WHERE id=87530;
+
+
+CREATE OR REPLACE FUNCTION select_rows_by_year(target_year INTEGER)
+RETURNS SETOF weather_data AS
+$$
+DECLARE
+    sql_query TEXT;
+BEGIN
+    sql_query := 'SELECT * FROM weather_data WHERE EXTRACT(YEAR FROM weather_data.date) = ' || target_year;
+    RETURN QUERY EXECUTE sql_query;
+END;
+$$ LANGUAGE plpgsql;
+
+-- SELECT * FROM select_rows_by_year(2023);
+
+CREATE OR REPLACE FUNCTION select_rows_by_year_and_months(target_year INTEGER, start_month INTEGER , end_month INTEGER)
+RETURNS SETOF weather_data AS
+$$
+DECLARE
+    sql_query TEXT;
+BEGIN
+    sql_query := 'SELECT * FROM weather_data WHERE EXTRACT(YEAR FROM weather_data.date) = ' || target_year
+               || ' AND EXTRACT(MONTH FROM weather_data.date) BETWEEN ' || start_month || ' AND ' || end_month;
+    RETURN QUERY EXECUTE sql_query;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- SELECT * FROM select_rows_by_year_and_months(2023, 2,3);
+
+
 
